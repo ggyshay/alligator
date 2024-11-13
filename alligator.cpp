@@ -12,7 +12,7 @@
 #define CABLE_NUM 0
 
 #define TX_PIO pio0
-#define RX_PIO pio0
+#define RX_PIO pio1
 #define LEDS_PIO pio1
 
 #define TX_SM 0
@@ -36,8 +36,6 @@ int t = 0;
 #define AMBAR 0x0A3000
 #define WHITE 0x121212
 
-// void handle_clock(uint8_t command);
-
 void clearPacket()
 {
     for (int i = 0; i < 128; i++)
@@ -48,34 +46,22 @@ void clearPacket()
 
 void midi_task()
 {
-    clearPacket(); // maybe not needed
+    clearPacket();
     int n_available = midiInt.midiAvailableUSB();
     if (n_available > 0)
     {
-        printf("%d MIDI:\n", n_available);
         midiInt.getMIDIUSB(packet);
-        for (int i = 0; i < n_available; i++)
-        {
-            printf("    %02X ", packet[i]);
-        }
-        printf("\n");
-
-        // if (packet[0] == CLOCK_SIGNAL || packet[0] == CLOCK_START || packet[0] == CLOCK_STOP)
-        // {
-        //     handle_clock(packet[0]);
-        // }
-        // midiInt.sendMIDIStatusUART(packet[0], packet[1], packet[2]);
-
-        // midiInt.sendMIDINBytesUART(packet, n_available);
+        midiInt.sendMIDINBytesUART(packet, n_available);
     }
-    // midiInt.update();
+    midiInt.update();
 
-    // clearPacket();
-    // if (midiInt.midiAvailableUART())
-    // {
-    //     midiInt.getMIDIUART(packet);
-    //     midiInt.sendMIDIStatusUSB(packet[0], packet[1], packet[2]);
-    // }
+    clearPacket();
+    n_available = midiInt.midiAvailableUART();
+    if (n_available)
+    {
+        midiInt.getMIDIUART(packet);
+        midiInt.sendMIDINBytesUSB(packet, n_available);
+    }
 }
 
 static inline void put_pixel(uint32_t pixel_grb)
@@ -153,44 +139,6 @@ void handle_clock()
     pulseCounter = (pulseCounter + 1) % sequence_length;
 }
 
-// void handle_clock(uint8_t command)
-// {
-//     if (command == CLOCK_START)
-//     {
-//         pulseCounter = 0;
-//         MIDIIsLocked = false;
-//         return;
-//     }
-//     if (command == CLOCK_STOP)
-//     {
-//         stop_pattern(16);
-//         pulseCounter = 0;
-//         MIDIIsLocked = true;
-//         return;
-//     }
-//     if (MIDIIsLocked)
-//     {
-//         return;
-//     }
-
-//     if (pulseCounter % 24 == 0)
-//     {
-//         indicator_pattern(16, pulseCounter / (24));
-//     }
-
-//     pulseCounter = (pulseCounter + 1) % sequence_length;
-// }
-
-void serial_task()
-{
-    static uint32_t last = 0;
-    if (millis() - last > 1000)
-    {
-        printf("Hello World\n");
-        last = millis();
-    }
-}
-
 void init_ws2812()
 {
     gpio_set_drive_strength(WS2812_PIN, GPIO_DRIVE_STRENGTH_12MA);
@@ -206,22 +154,21 @@ int main(void)
 
     stdio_init_all();
 
-    // midiInt.init();
+    midiInt.init();
 
     midiInt.initUART(TX_PIO, RX_PIO, TX_SM, RX_SM, PIN_TX, PIN_RX);
     init_ws2812();
 
     tud_init(BOARD_TUD_RHPORT);
 
-    // midiInt.onClockStart(&handle_start);
-    // midiInt.onClockStop(&handle_stop);
-    // midiInt.onClock(&handle_clock);
-
+    midiInt.onClockStart(&handle_start);
+    midiInt.onClockStop(&handle_stop);
+    midiInt.onClock(&handle_clock);
     stop_pattern(16);
+
     while (1)
     {
         tud_task();
         midi_task();
-        serial_task();
     }
 }

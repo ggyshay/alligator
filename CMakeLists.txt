@@ -41,9 +41,9 @@ pico_set_program_name(alligator "alligator")
 pico_set_program_version(alligator "0.1")
 
 # Generate PIO headers
-pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
-pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/uart_tx.pio)
-pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/uart_rx.pio)
+pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/pio/ws2812.pio)
+pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/pio/uart_tx.pio)
+pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/pio/uart_rx.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(alligator 0)

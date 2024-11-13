@@ -12,6 +12,8 @@
 #define CLOCK_STOP 0xFC
 #define CLOCK_SIGNAL 0xF8
 
+#define RX_NON_EMPTY_INTERUPT_SOURCE pis_sm1_rx_fifo_not_empty
+
 #include "midi.h"
 #include "pico/stdlib.h"
 #include "bsp/board.h"
@@ -30,32 +32,40 @@ private:
     uint sm_rx;
     uint pin_tx;
     uint pin_rx;
+
     uint8_t buffer[128];
-    uint8_t buffer_size = 0;
+    uint8_t write_ptr = 0;
+    uint8_t read_ptr = 0;
+
+    uint8_t uart_rx_buffer[128];
+    uint8_t uart_write_ptr = 0;
+    uint8_t uart_read_ptr = 0;
 
     std::function<void()> onClockCallback, onClockStartCallback, onClockStopCallback;
 
-    void registerMIDIByte(uint8_t byte);
+    static MIDIInterface *instance;
     void clearBuffer();
+    void writeBuffer(uint8_t *packet, int n);
+    static void static_register_uart_rx();
+    void register_uart_rx();
 
 public:
     MIDIInterface(uint8_t pinTX, uint8_t pinRX);
     void init();
-    void sendMIDINBytesUART(uint8_t *packet, int n);
-    void sendMIDIStatusUART(uint8_t status, uint8_t note, uint8_t velocity);
-    void sendMIDIStatusUSB(uint8_t status, uint8_t note, uint8_t velocity);
-    void sendNoteOnUART(uint8_t channel, uint8_t note, uint8_t velocity);
-    void sendCCUART(uint8_t channel, uint8_t control, uint8_t value);
-    void sendNoteOnUSB(uint8_t channel, uint8_t note, uint8_t velocity);
-    void sendCCUSB(uint8_t channel, uint8_t control, uint8_t value);
-    bool update();
-    int midiAvailableUSB();
-    bool midiAvailableUART();
-    bool midiAvailable();
-    bool getMIDIUSB(uint8_t *packet);
-    void getMIDIUART(uint8_t *packet);
-    bool getMIDI(uint8_t *packet);
     void initUART(PIO pio_tx_, PIO pio_rx_, uint sm_tx, uint sm_rx, uint pin_tx_, uint pin_rx_);
+
+    bool midiAvailable();
+    int midiAvailableUART();
+    int midiAvailableUSB();
+
+    bool update();
+
+    bool getMIDI(uint8_t *packet);
+    void getMIDIUART(uint8_t *packet);
+    bool getMIDIUSB(uint8_t *packet);
+
+    void sendMIDINBytesUART(uint8_t *packet, int n);
+    void sendMIDINBytesUSB(uint8_t *packet, int n);
 
     void onClock(std::function<void()>);
     void onClockStart(std::function<void()>);
