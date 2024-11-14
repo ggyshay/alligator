@@ -34,7 +34,7 @@ project(alligator C CXX ASM)
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
-set(SOURCES alligator.cpp usb_descriptors.c tusb_config.h midi.h midi.cpp)
+set(SOURCES alligator.cpp usb_descriptors.c tusb_config.h midi.h midi.cpp circular_buffer.h circular_buffer.cpp)
 add_executable(alligator ${SOURCES})
 
 pico_set_program_name(alligator "alligator")

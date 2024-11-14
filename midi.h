@@ -18,6 +18,7 @@
 #include "pico/stdlib.h"
 #include "bsp/board.h"
 #include "bsp/board_api.h"
+#include "circular_buffer.h"
 
 #include "tusb.h"
 
@@ -33,34 +34,39 @@ private:
     uint pin_tx;
     uint pin_rx;
 
-    uint8_t buffer[128];
-    uint8_t write_ptr = 0;
-    uint8_t read_ptr = 0;
+    // uint8_t buffer[128];
+    // uint8_t write_ptr = 0;
+    // uint8_t read_ptr = 0;
 
-    uint8_t uart_rx_buffer[128];
-    uint8_t uart_write_ptr = 0;
-    uint8_t uart_read_ptr = 0;
+    // uint8_t uart_rx_buffer[128];
+    // uint8_t uart_write_ptr = 0;
+    // uint8_t uart_read_ptr = 0;
+
+    // uint8_t buffer_clean[128];
+    // uint8_t clean_write_ptr = 0;
+    // uint8_t clean_read_ptr = 0;
 
     std::function<void()> onClockCallback, onClockStartCallback, onClockStopCallback;
 
     static MIDIInterface *instance;
-    void clearBuffer();
-    void writeBuffer(uint8_t *packet, int n);
+    // void clearBuffer();
+    // void writeBuffer(uint8_t *packet, int n);
     static void static_register_uart_rx();
     void register_uart_rx();
+    void register_clean(uint8_t start, uint8_t len);
+    bool pull();
 
 public:
     MIDIInterface(uint8_t pinTX, uint8_t pinRX);
+    CircularBuffer usb_buffer, uart_buffer, clean_buffer;
     void init();
     void initUART(PIO pio_tx_, PIO pio_rx_, uint sm_tx, uint sm_rx, uint pin_tx_, uint pin_rx_);
 
-    bool midiAvailable();
     int midiAvailableUART();
     int midiAvailableUSB();
 
     bool update();
 
-    bool getMIDI(uint8_t *packet);
     void getMIDIUART(uint8_t *packet);
     bool getMIDIUSB(uint8_t *packet);
 

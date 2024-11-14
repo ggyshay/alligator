@@ -35,6 +35,7 @@ int t = 0;
 
 #define AMBAR 0x0A3000
 #define WHITE 0x121212
+#define CYAN 0x300030
 
 void clearPacket()
 {
@@ -44,22 +45,41 @@ void clearPacket()
     }
 }
 
+void all_filled_pattern(uint32_t color);
+
 void midi_task()
 {
+    midiInt.update();
     clearPacket();
     int n_available = midiInt.midiAvailableUSB();
     if (n_available > 0)
     {
+        // midiInt.clean_buffer.print();
+        // printf("MIDI available: %d\n", n_available);
+        // printf("usb: ");
         midiInt.getMIDIUSB(packet);
+        // printf("\n");
+        // for (int i = 0; i < n_available; i++)
+        // {
+        //     printf("%02X ", packet[i]);
+        // }
+        // printf("\n");
         midiInt.sendMIDINBytesUART(packet, n_available);
     }
-    midiInt.update();
+    // midiInt.update();
 
     clearPacket();
     n_available = midiInt.midiAvailableUART();
     if (n_available)
     {
         midiInt.getMIDIUART(packet);
+        // printf("uart (%d): ", n_available);
+        // midiInt.uart_buffer.print();
+        // for (int i = 0; i < n_available; i++)
+        // {
+        //     printf("%02X ", packet[i]);
+        // }
+        // printf("\n");
         midiInt.sendMIDINBytesUSB(packet, n_available);
     }
 }
@@ -91,23 +111,37 @@ void indicator_pattern(uint len, uint t)
     }
 }
 
-void stop_pattern(uint len)
+void stop_pattern(int color)
 {
     for (int i = 0; i < 4; ++i)
     {
-        put_pixel(AMBAR);
+        put_pixel(color);
     }
     for (int i = 0; i < 2; ++i)
     {
-        put_pixel(AMBAR);
+        put_pixel(color);
 
         put_pixel(0);
         put_pixel(0);
-        put_pixel(AMBAR);
+        put_pixel(color);
     }
     for (int i = 0; i < 4; ++i)
     {
-        put_pixel(AMBAR);
+        put_pixel(color);
+    }
+}
+
+void all_filled_pattern(uint32_t color)
+{
+    static uint32_t last = 0;
+    if (color == last)
+    {
+        return;
+    }
+    last = color;
+    for (int i = 0; i < 16; ++i)
+    {
+        put_pixel(color);
     }
 }
 
@@ -119,7 +153,7 @@ void handle_start()
 
 void handle_stop()
 {
-    stop_pattern(16);
+    stop_pattern(AMBAR);
     pulseCounter = 0;
     MIDIIsLocked = true;
 }
@@ -128,6 +162,7 @@ void handle_clock()
 {
     if (MIDIIsLocked)
     {
+        stop_pattern(CYAN);
         return;
     }
 
@@ -148,6 +183,46 @@ void init_ws2812()
     gpio_set_drive_strength(WS2812_PIN, GPIO_DRIVE_STRENGTH_12MA);
 }
 
+void cron_task()
+{
+    static uint32_t last = 0;
+    static bool version = false;
+    uint8_t pack0[] = {
+        0x90,
+        36,
+        127};
+
+    uint8_t pack1[] = {
+        0xB0,
+        0,
+        0x01,
+        0xB0,
+        0x20,
+        0x02,
+        0xC0,
+        0x02,
+    };
+
+    if (millis() - last > 1000)
+    {
+        last = millis();
+        uint8_t note_on[3] = {0x90, 36, 127};
+        tud_midi_stream_write(0, note_on, 3);
+        // midiInt.sendMIDINBytesUSB(pack0, 3);
+        // printf("hello\n");
+
+        // if (version)
+        // {
+        //     midiInt.sendMIDINBytesUART(pack0, 8);
+        // }
+        // else
+        // {
+        //     midiInt.sendMIDINBytesUART(pack1, 8);
+        // }
+        // version = !version;
+    }
+}
+
 int main(void)
 {
     board_init();
@@ -164,11 +239,13 @@ int main(void)
     midiInt.onClockStart(&handle_start);
     midiInt.onClockStop(&handle_stop);
     midiInt.onClock(&handle_clock);
-    stop_pattern(16);
+    // stop_pattern(16);
+    all_filled_pattern(AMBAR);
 
     while (1)
     {
         tud_task();
         midi_task();
+        // cron_task();
     }
 }
