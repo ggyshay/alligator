@@ -48,14 +48,11 @@ void MIDIInterface::initUART(PIO pio_tx_, PIO pio_rx_, uint sm_tx_, uint sm_rx_,
 int MIDIInterface::midiAvailableUART()
 {
     return uart_buffer.available();
-    // return (uart_write_ptr - uart_read_ptr + 128) % 128;
 }
 
 int MIDIInterface::midiAvailableUSB()
 {
     return clean_buffer.available();
-    // return (clean_read_ptr - clean_write_ptr + 128) % 128;
-    // return tud_midi_available();
 }
 
 bool MIDIInterface::pull()
@@ -63,15 +60,10 @@ bool MIDIInterface::pull()
     int n_available = tud_midi_available();
     if (n_available > 0)
     {
-        // printf("pulling %d\n", n_available);
+
         uint8_t packet[64] = {0};
         tud_midi_stream_read(packet, 64);
-        printf("pulling %d\n", n_available);
-        for (int i = 0; i < n_available; i++)
-        {
-            printf("%02X ", packet[i]);
-        }
-        printf("\n");
+
         usb_buffer.write(packet, n_available);
         return true;
     }
@@ -81,7 +73,7 @@ bool MIDIInterface::pull()
 bool MIDIInterface::update()
 {
     pull();
-    // returns true if it is in a waiting state;
+
     while (usb_buffer.available())
     {
         uint8_t buffer_size = usb_buffer.available();
@@ -90,9 +82,6 @@ bool MIDIInterface::update()
             return false;
         }
 
-        // printf("update (%d available): ", buffer_size);
-        // usb_buffer.print();
-        // printf("\n");
         uint8_t value = usb_buffer.peak();
         uint8_t status = value & 0xF0;
         switch (status)
@@ -105,10 +94,13 @@ bool MIDIInterface::update()
             {
                 return true;
             }
-            printf("    status: %02X\n", status);
+            if ((status == 0x90) && onNoteOnCallback)
+            {
+                onNoteOnCallback(status, usb_buffer.peak(1), usb_buffer.peak(2));
+            }
+
             clean_buffer.get_from_buffer(&usb_buffer, 3);
 
-            // read_ptr = (read_ptr + 3) % 128;
             break;
         }
         case 0xC0:
@@ -117,10 +109,9 @@ bool MIDIInterface::update()
             {
                 return true;
             }
-            printf("    C: %02X\n", status);
+
             clean_buffer.get_from_buffer(&usb_buffer, 2);
-            // register_clean(read_ptr, 2);
-            // read_ptr = (read_ptr + 2) % 128;
+
             break;
         }
         case 0xF0:
@@ -138,10 +129,9 @@ bool MIDIInterface::update()
                         return true;
                     }
                 };
-                printf("    sysex: %02X\n", value);
+
                 clean_buffer.get_from_buffer(&usb_buffer, i);
-                // register_clean(read_ptr, (i - read_ptr + 1) % 128);
-                // read_ptr = (i + 1) % 128;
+
                 break;
             }
             case 0xF1:
@@ -151,10 +141,9 @@ bool MIDIInterface::update()
                 {
                     return true;
                 }
-                printf("    sysex: %02X\n", value);
+
                 clean_buffer.get_from_buffer(&usb_buffer, 2);
-                // register_clean(read_ptr, 2);
-                // read_ptr = (read_ptr + 2) % 128;
+
                 break;
             }
             case 0xF2:
@@ -163,19 +152,15 @@ bool MIDIInterface::update()
                 {
                     return true;
                 }
-                printf("    F2\n");
-
                 clean_buffer.get_from_buffer(&usb_buffer, 3);
-                // register_clean(read_ptr, 3);
-                // read_ptr = (read_ptr + 3) % 128;
+
                 break;
             }
             case 0xF7:
             {
-                printf("    bug 0xF7\n");
+
                 usb_buffer.clear();
-                // clearBuffer();
-                // read_ptr = (read_ptr + 1) % 128;
+
                 break;
             }
             case 0xF8:
@@ -185,10 +170,8 @@ bool MIDIInterface::update()
                     onClockCallback();
                 }
 
-                printf("    clock\n");
                 clean_buffer.get_from_buffer(&usb_buffer, 1);
-                // register_clean(read_ptr, 1);
-                // read_ptr = (read_ptr + 1) % 128;
+
                 break;
             }
             case 0xFA:
@@ -198,10 +181,8 @@ bool MIDIInterface::update()
                     onClockStartCallback();
                 }
 
-                printf("    clock start\n");
                 clean_buffer.get_from_buffer(&usb_buffer, 1);
-                // register_clean(read_ptr, 1);
-                // read_ptr = (read_ptr + 1) % 128;
+
                 break;
             }
             case 0xFC:
@@ -211,17 +192,14 @@ bool MIDIInterface::update()
                     onClockStopCallback();
                 }
 
-                printf("    clock stop\n");
                 clean_buffer.get_from_buffer(&usb_buffer, 1);
-                // register_clean(read_ptr, 1);
-                // read_ptr = (read_ptr + 1) % 128;
+
                 break;
             }
 
             default:
             {
                 uint8_t k = usb_buffer.read();
-                // printf("    trash: %02X\n", k);
 
                 break;
             }
@@ -231,15 +209,13 @@ bool MIDIInterface::update()
         case 0x00:
         {
             uint8_t k = usb_buffer.read();
-            // printf("    trash: %02X\n", k);
-            // read_ptr = (read_ptr + 1) % 128;
+
             break;
         }
         default:
         {
             uint8_t k = usb_buffer.read();
-            // printf("    trash: %02X\n", k);
-            // read_ptr = (read_ptr + 1) % 128;
+
             break;
         }
         }
@@ -251,43 +227,13 @@ void MIDIInterface::getMIDIUART(uint8_t *packet)
 {
     int n_available = midiAvailableUART();
     uart_buffer.read(packet, n_available);
-    // int i = 0;
-    // while (uart_write_ptr != uart_read_ptr)
-    // {
-    //     packet[i] = uart_rx_buffer[uart_read_ptr];
-    //     uart_read_ptr = (uart_read_ptr + 1) % 128;
-    //     i++;
-    // }
 }
 
 bool MIDIInterface::getMIDIUSB(uint8_t *packet)
 {
     int n_available = clean_buffer.available();
     clean_buffer.read(packet, n_available);
-    // if (clean_read_ptr == clean_write_ptr)
-    // {
-    //     return false;
-    // }
-    // int n = midiAvailableUSB();
-    // if (n)
-    // {
-    //     for (int i = 0; i < n; i++)
-    //     {
-    //         packet[i] = buffer_clean[clean_read_ptr];
-    //         clean_read_ptr = (clean_read_ptr + 1) % 128;
-    //     }
-    //     return true;
-    // }
-    // return false;
 
-    // int n = tud_midi_available();
-    // if (n)
-    // {
-    //     tud_midi_stream_read(packet, 64);
-    //     writeBuffer(packet, n);
-    //     return true;
-    // }
-    // return false;
     return false;
 }
 
@@ -315,26 +261,8 @@ void MIDIInterface::register_uart_rx()
     {
         uint8_t r = uart_rx_program_getc(pio_rx, sm_rx);
         uart_buffer.write(r);
-        // uart_rx_buffer[uart_write_ptr] = r;
-        // uart_write_ptr = (uart_write_ptr + 1) % 128;
     }
 }
-
-// void MIDIInterface::register_clean(uint8_t start, uint8_t len)
-// {
-//     for (int i = 0; i < len; i++)
-//     {
-//         buffer_clean[clean_write_ptr] = buffer[start + i];
-//         clean_write_ptr = (clean_write_ptr + 1) % 128;
-//     }
-//     printf("regitered read: %d, write: %d\n", clean_read_ptr, clean_write_ptr);
-//     // printf("cleaned\n");
-//     // for (int i = 0; i < 128; i++)
-//     // {
-//     //     printf("%02X ", buffer_clean[i]);
-//     // }
-//     // printf("\n");
-// }
 
 void MIDIInterface::onClock(std::function<void()> callback)
 {
@@ -351,21 +279,10 @@ void MIDIInterface::onClockStop(std::function<void()> callback)
     onClockStopCallback = callback;
 }
 
-// void MIDIInterface::writeBuffer(uint8_t *packet, int n)
-// {
-//     for (int i = 0; i < n; i++)
-//     {
-//         buffer[write_ptr] = packet[i];
-//         write_ptr = (write_ptr + 1) % 128;
-//     }
-// }
-
-// void MIDIInterface::clearBuffer()
-// {
-
-//     // read_ptr = 0;
-//     // write_ptr = 0;
-// }
+void MIDIInterface::onNoteOn(std::function<void(uint8_t, uint8_t, uint8_t)> callback)
+{
+    onNoteOnCallback = callback;
+}
 
 void tud_mount_cb(void)
 {

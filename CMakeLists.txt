@@ -34,16 +34,16 @@ project(alligator C CXX ASM)
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
-set(SOURCES alligator.cpp usb_descriptors.c tusb_config.h midi.h midi.cpp circular_buffer.h circular_buffer.cpp)
+set(SOURCES alligator.cpp usb_descriptors.c tusb_config.h src/midi.h src/midi.cpp src/circular_buffer.h src/circular_buffer.cpp src/led_matrix.h src/led_matrix.cpp)
 add_executable(alligator ${SOURCES})
 
 pico_set_program_name(alligator "alligator")
 pico_set_program_version(alligator "0.1")
 
 # Generate PIO headers
-pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/pio/ws2812.pio)
-pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/pio/uart_tx.pio)
-pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/pio/uart_rx.pio)
+pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/src/pio/ws2812.pio)
+pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/src/pio/uart_tx.pio)
+pico_generate_pio_header(alligator ${CMAKE_CURRENT_LIST_DIR}/src/pio/uart_rx.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(alligator 0)

@@ -34,23 +34,11 @@ private:
     uint pin_tx;
     uint pin_rx;
 
-    // uint8_t buffer[128];
-    // uint8_t write_ptr = 0;
-    // uint8_t read_ptr = 0;
-
-    // uint8_t uart_rx_buffer[128];
-    // uint8_t uart_write_ptr = 0;
-    // uint8_t uart_read_ptr = 0;
-
-    // uint8_t buffer_clean[128];
-    // uint8_t clean_write_ptr = 0;
-    // uint8_t clean_read_ptr = 0;
-
     std::function<void()> onClockCallback, onClockStartCallback, onClockStopCallback;
+    std::function<void(uint8_t, uint8_t, uint8_t)> onNoteOnCallback;
 
     static MIDIInterface *instance;
-    // void clearBuffer();
-    // void writeBuffer(uint8_t *packet, int n);
+
     static void static_register_uart_rx();
     void register_uart_rx();
     void register_clean(uint8_t start, uint8_t len);
@@ -76,11 +64,8 @@ public:
     void onClock(std::function<void()>);
     void onClockStart(std::function<void()>);
     void onClockStop(std::function<void()>);
+    void onNoteOn(std::function<void(uint8_t, uint8_t, uint8_t)> callback);
 };
-
-// ====================================
-// Tiny USB MIDI Callbacks
-// ====================================
 
 void tud_mount_cb(void);
 void tud_umount_cb(void);
